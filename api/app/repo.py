@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import SQLAlchemyError
 import logging
 from .models import Base, Incident, Event
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +73,7 @@ class IncidentRepository:
         """Check if incident already exists for IP and type within time window"""
         db = self.get_db()
         try:
-            cutoff = datetime.now(datetime.timezone.utc) - timedelta(minutes=within_minutes)
+            cutoff = datetime.now(timezone.utc) - timedelta(minutes=within_minutes)
             incident = db.query(Incident).filter(
                 Incident.ip == ip,
                 Incident.type == incident_type,
@@ -91,14 +91,15 @@ class IncidentRepository:
         db = self.get_db()
         try:
             # Today's count
-            today_start = datetime.now(datetime.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+            today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
             today_count = db.query(Incident).filter(
                 Incident.created_at >= today_start
             ).count()
             
             # Breakdown by type
             by_type = {}
-            type_counts = db.query(Incident.type, db.func.count(Incident.id)).filter(
+            from sqlalchemy import func
+            type_counts = db.query(Incident.type, func.count(Incident.id)).filter(
                 Incident.created_at >= today_start
             ).group_by(Incident.type).all()
             

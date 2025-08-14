@@ -1,5 +1,5 @@
 from collections import deque
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Deque, Set
 import logging
 from .models import Incident, Event
@@ -124,7 +124,7 @@ class DetectionEngine:
     
     def cleanup_old_data(self) -> None:
         """Clean up old in-memory data"""
-        now = datetime.now(datetime.timezone.utc)
+        now = datetime.now(timezone.utc)
         
         # Clean auth failures
         for ip in list(self.auth_failures.keys()):

@@ -1,6 +1,6 @@
 import os
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -79,7 +79,7 @@ async def health_check():
     
     return HealthResponse(
         status="ok",
-        timestamp=datetime.now(datetime.timezone.utc),
+        timestamp=datetime.now(timezone.utc),
         database=db_status
     )
 
@@ -124,7 +124,7 @@ async def generate_test_event(background_tasks: BackgroundTasks):
         
         # Create 12 AUTH_FAIL events over 4 minutes (will trigger brute force detection)
         for i in range(12):
-            timestamp = datetime.now(datetime.timezone.utc) - timedelta(minutes=4-i*0.3)  # Spread over 4 minutes
+            timestamp = datetime.now(timezone.utc) - timedelta(minutes=4-i*0.3)  # Spread over 4 minutes
             event = Event(
                 ts=timestamp,
                 ip=brute_force_ip,
@@ -144,7 +144,7 @@ async def generate_test_event(background_tasks: BackgroundTasks):
         
         # Create 20 CONN_ATTEMPT events over 2.5 minutes (will trigger port scan detection)
         for i, port in enumerate(common_ports):
-            timestamp = datetime.now(datetime.timezone.utc) - timedelta(minutes=2.5-i*0.15)  # Spread over 2.5 minutes
+            timestamp = datetime.now(timezone.utc) - timedelta(minutes=2.5-i*0.15)  # Spread over 2.5 minutes
             event = Event(
                 ts=timestamp,
                 ip=port_scan_ip,
