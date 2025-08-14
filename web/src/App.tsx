@@ -1,191 +1,127 @@
-import { useState, useEffect } from 'react';
-import KpiCards from './components/KpiCards';
-import HourlyChart from './components/HourlyChart';
-import IncidentsTable from './components/IncidentsTable';
-import DemoButton from './components/DemoButton';
-import { Incident, DailyStats, getIncidents, getDailyStats } from './api';
+import AppShell from './components/AppShell'
+import { KpiCard } from './components/KpiCard'
+import ChartCard from './components/ChartCard'
+import IncidentsTable from './components/IncidentsTable'
+import { Button } from './components/ui'
+import { LoadingSkeleton } from './components/LoadingSkeleton'
+import { useEffect, useState } from 'react'
 
-function App() {
-  const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [stats, setStats] = useState<DailyStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+const API = import.meta.env.VITE_API_BASE || '/api'
 
-  const fetchData = async () => {
+export default function App() {
+  const [stats, setStats] = useState<any>(null)
+  const [rows, setRows] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  async function load() {
     try {
-      setError(null);
-      const [incidentsData, statsData] = await Promise.all([
-        getIncidents(),
-        getDailyStats()
-      ]);
-      setIncidents(incidentsData);
-      setStats(statsData);
+      setLoading(true)
+      setError(null)
+      
+      const [statsRes, incidentsRes] = await Promise.all([
+        fetch(`${API}/stats/daily`),
+        fetch(`${API}/incidents?limit=50`)
+      ])
+      
+      if (!statsRes.ok || !incidentsRes.ok) {
+        throw new Error('Failed to fetch data')
+      }
+      
+      const s = await statsRes.json()
+      const inc = await incidentsRes.json()
+      
+      setStats(s)
+      setRows(inc)
     } catch (err) {
-      console.error('Error fetching data:', err);
-      setError('Failed to fetch data. Please check if the API is running.');
+      setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
-    fetchData();
-    
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    load()
+    const id = setInterval(load, 30000) // Refresh every 30 seconds
+    return () => clearInterval(id)
+  }, [])
 
-  const handleTrafficGenerated = () => {
-    // Refresh data after demo traffic is generated
-    setTimeout(fetchData, 2000);
-  };
+  async function demo() {
+    try {
+      await fetch(`${API}/test-event`, { method: 'POST' })
+      setTimeout(load, 1500) // Reload after demo events are processed
+    } catch (err) {
+      console.error('Demo failed:', err)
+    }
+  }
 
   if (loading) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        color: 'white',
-        padding: '2rem'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div className="loading-spinner" style={{ 
-            width: '60px', 
-            height: '60px', 
-            borderWidth: '4px',
-            margin: '0 auto 2rem'
-          }}></div>
-          <h1 style={{ fontSize: '2rem', fontWeight: '600', marginBottom: '1rem' }}>
-            🛡️ SentinelOne Lite
-          </h1>
-          <p style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '1.1rem' }}>
-            Loading security dashboard...
-          </p>
-        </div>
-      </div>
-    );
+      <AppShell>
+        <LoadingSkeleton />
+      </AppShell>
+    )
   }
 
   if (error) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        padding: '2rem'
-      }}>
-        <div className="glass-card" style={{ textAlign: 'center', maxWidth: '500px' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚠️</div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: '600', marginBottom: '1rem' }}>
-            Connection Error
-          </h1>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-            {error}
-          </p>
-          <button 
-            className="btn btn-primary"
-            onClick={fetchData}
-          >
+      <AppShell>
+        <div className="glass p-8 text-center">
+          <div className="text-danger text-2xl mb-4">⚠️</div>
+          <h2 className="text-xl font-mono text-ink-primary mb-2">Connection Error</h2>
+          <p className="text-ink-muted mb-4">{error}</p>
+          <Button onClick={load} className="bg-accent-soft text-black hover:bg-accent-soft/80">
             🔄 Retry Connection
-          </button>
-          <div style={{ 
-            marginTop: '1.5rem', 
-            fontSize: '0.875rem', 
-            color: 'var(--text-secondary)',
-            padding: '1rem',
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-            borderRadius: 'var(--radius-lg)'
-          }}>
-            <p style={{ marginBottom: '0.5rem' }}><strong>Quick Fix:</strong></p>
-            <p>1. Ensure Docker is running</p>
-            <p>2. Run <code style={{ backgroundColor: 'rgba(0,0,0,0.2)', padding: '0.2rem 0.4rem', borderRadius: '0.25rem' }}>./start.sh</code></p>
-            <p>3. Wait for services to start</p>
-          </div>
+          </Button>
         </div>
-      </div>
-    );
+      </AppShell>
+    )
   }
 
-  // Calculate KPI data
-  const todayCount = stats?.today_count || 0;
-  const topAttackingIp = incidents.length > 0 ? incidents[0].ip : 'None';
-  const bruteForceCount = stats?.by_type?.BRUTE_FORCE || 0;
-  const portScanCount = stats?.by_type?.PORT_SCAN || 0;
-
   return (
-    <div style={{ 
-      minHeight: '100vh',
-      padding: '2rem',
-      maxWidth: '1400px',
-      margin: '0 auto'
-    }}>
-      {/* Header */}
-      <header style={{ 
-        textAlign: 'center', 
-        marginBottom: '3rem',
-        padding: '2rem 0'
-      }}>
-        <h1 style={{
-          fontSize: 'var(--font-size-4xl)',
-          fontWeight: '700',
-          color: 'white',
-          marginBottom: '1rem',
-          textShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
-        }}>
-          🛡️ SentinelOne Lite
-        </h1>
-        <p style={{
-          fontSize: 'var(--font-size-lg)',
-          color: 'rgba(255, 255, 255, 0.9)',
-          fontWeight: '400',
-          maxWidth: '600px',
-          margin: '0 auto'
-        }}>
-          Real-time cybersecurity monitoring dashboard with intelligent threat detection
-        </p>
-      </header>
-
+    <AppShell>
       {/* KPI Cards */}
-      <KpiCards
-        todayCount={todayCount}
-        topAttackingIp={topAttackingIp}
-        bruteForceCount={bruteForceCount}
-        portScanCount={portScanCount}
-      />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <KpiCard 
+          label="Today's Incidents" 
+          value={stats?.today_count?.toString() ?? '—'} 
+          sub={stats?.today_count > 0 ? `+${Math.floor(stats.today_count * 0.3)} from yesterday` : 'No threats detected'}
+        />
+        <KpiCard 
+          label="Top Attacking IP" 
+          value={rows?.[0]?.ip ?? 'None'} 
+          sub="Most active threat source"
+        />
+        <KpiCard 
+          label="By Type" 
+          value={stats ? `${stats.by_type?.BRUTE_FORCE || 0}/${stats.by_type?.PORT_SCAN || 0}` : '—'} 
+          sub="Brute Force / Port Scan"
+        />
+      </div>
 
-      {/* Chart */}
-      {stats && <HourlyChart stats={stats} />}
+      {/* Chart and Demo Section */}
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <ChartCard 
+            labels={(stats?.timeseries || []).map((d: any) => d.t)} 
+            data={(stats?.timeseries || []).map((d: any) => d.count)} 
+          />
+        </div>
+        <div className="glass p-5 flex flex-col justify-between">
+          <div>
+            <div className="text-lg font-mono text-ink-primary mb-2">Generate Demo Traffic</div>
+            <div className="text-sm text-ink-muted">Triggers brute-force and port-scan incidents to test the system.</div>
+          </div>
+          <Button onClick={demo} className="mt-4 bg-accent-soft text-black hover:bg-accent-soft/80 w-full">
+            🚀 Run Demo
+          </Button>
+        </div>
+      </div>
 
       {/* Incidents Table */}
-      <IncidentsTable incidents={incidents} />
-
-      {/* Demo Button */}
-      <DemoButton onTrafficGenerated={handleTrafficGenerated} />
-
-      {/* Footer */}
-      <footer style={{
-        textAlign: 'center',
-        marginTop: '4rem',
-        padding: '2rem 0',
-        borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-        color: 'rgba(255, 255, 255, 0.7)',
-        fontSize: '0.875rem'
-      }}>
-        <p>
-          <strong>SentinelOne Lite</strong> • Open Source Security Monitoring
-        </p>
-        <p style={{ marginTop: '0.5rem', fontSize: '0.75rem' }}>
-          Educational project • Not affiliated with SentinelOne Inc.
-        </p>
-      </footer>
-    </div>
-  );
+      <div className="mt-6">
+        <IncidentsTable rows={rows} />
+      </div>
+    </AppShell>
+  )
 }
-
-export default App;

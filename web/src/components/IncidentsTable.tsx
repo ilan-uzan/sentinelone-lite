@@ -1,134 +1,51 @@
-import React from 'react';
-import { Incident } from '../api';
+import { SeverityBadge } from './ui'
+import { GlassCard } from './GlassCard'
 
-interface IncidentsTableProps {
-  incidents: Incident[];
-}
-
-const IncidentsTable: React.FC<IncidentsTableProps> = ({ incidents }) => {
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
-
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'HIGH':
-        return 'badge-high';
-      case 'MEDIUM':
-        return 'badge-medium';
-      case 'LOW':
-        return 'badge-low';
-      default:
-        return 'badge-medium';
-    }
-  };
-
-  const getTypeBadge = (type: string) => {
-    switch (type) {
-      case 'BRUTE_FORCE':
-        return 'badge-brute-force';
-      case 'PORT_SCAN':
-        return 'badge-port-scan';
-      default:
-        return 'badge-medium';
-    }
-  };
-
-  if (incidents.length === 0) {
+export default function IncidentsTable({ rows }: { rows: any[] }) {
+  if (!rows || rows.length === 0) {
     return (
-      <div className="glass-card">
-        <div className="glass-card-header">
-          <h2 className="glass-card-title">Latest Incidents</h2>
-          <p className="glass-card-subtitle">No security incidents detected</p>
+      <GlassCard>
+        <div className="text-center py-8">
+          <div className="text-ink-muted text-sm">No incidents found</div>
         </div>
-        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🛡️</div>
-          <p>Your network is currently secure</p>
-          <p style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>
-            Use the demo button below to generate test traffic
-          </p>
-        </div>
-      </div>
-    );
+      </GlassCard>
+    )
   }
 
   return (
-    <div className="glass-card slide-up">
-      <div className="glass-card-header">
-        <h2 className="glass-card-title">Latest Incidents</h2>
-        <p className="glass-card-subtitle">
-          {incidents.length} security incident{incidents.length !== 1 ? 's' : ''} detected
-        </p>
+    <GlassCard className="overflow-hidden">
+      <div className="mb-4">
+        <h3 className="text-lg font-mono text-ink-primary">Recent Incidents</h3>
+        <p className="text-sm text-ink-muted">Latest security events and threats</p>
       </div>
-      
-      <div className="table-container">
-        <table className="table">
-          <thead>
-            <tr>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-white/5">
+            <tr className="[&>th]:text-left [&>th]:px-4 [&>th]:py-3 text-ink-secondary">
               <th>Time</th>
               <th>IP Address</th>
               <th>Type</th>
               <th>Severity</th>
               <th>Count</th>
-              <th>Details</th>
             </tr>
           </thead>
           <tbody>
-            {incidents.map((incident) => (
-              <tr key={incident.id} className="fade-in">
-                <td>
-                  <div style={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>
-                    {formatTimestamp(incident.created_at)}
-                  </div>
+            {rows.map((r, i) => (
+              <tr key={i} className="border-t border-white/10 hover:bg-white/3 transition-colors duration-150">
+                <td className="px-4 py-3 text-ink-muted font-mono text-xs">
+                  {new Date(r.created_at).toLocaleTimeString()}
                 </td>
-                <td>
-                  <div style={{ fontFamily: 'monospace', fontWeight: '500' }}>
-                    {incident.ip}
-                  </div>
+                <td className="px-4 py-3 font-mono text-accent-soft">{r.ip}</td>
+                <td className="px-4 py-3 text-ink-primary">{r.type}</td>
+                <td className="px-4 py-3">
+                  <SeverityBadge level={r.severity} />
                 </td>
-                <td>
-                  <span className={`badge ${getTypeBadge(incident.type)}`}>
-                    {incident.type.replace('_', ' ')}
-                  </span>
-                </td>
-                <td>
-                  <span className={`badge ${getSeverityColor(incident.severity)}`}>
-                    {incident.severity}
-                  </span>
-                </td>
-                <td>
-                  <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
-                    {incident.count}
-                  </div>
-                </td>
-                <td>
-                  <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                    {incident.meta?.ports ? (
-                      <span>
-                        Ports: {Array.isArray(incident.meta.ports) 
-                          ? incident.meta.ports.slice(0, 3).join(', ')
-                          : incident.meta.ports}
-                        {Array.isArray(incident.meta.ports) && incident.meta.ports.length > 3 && '...'}
-                      </span>
-                    ) : (
-                      incident.meta?.notes || 'No additional details'
-                    )}
-                  </div>
-                </td>
+                <td className="px-4 py-3 font-mono text-ink-secondary">{r.count}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-    </div>
-  );
-};
-
-export default IncidentsTable;
+    </GlassCard>
+  )
+}
