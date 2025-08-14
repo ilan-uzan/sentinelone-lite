@@ -21,8 +21,8 @@ function App() {
       setIncidents(incidentsData);
       setStats(statsData);
     } catch (err) {
-      setError('Failed to fetch data. Please check if the API is running.');
       console.error('Error fetching data:', err);
+      setError('Failed to fetch data. Please check if the API is running.');
     } finally {
       setLoading(false);
     }
@@ -49,7 +49,8 @@ function App() {
         alignItems: 'center',
         justifyContent: 'center',
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        color: 'white'
+        color: 'white',
+        padding: '2rem'
       }}>
         <div style={{ textAlign: 'center' }}>
           <div className="loading-spinner" style={{ 
@@ -58,10 +59,10 @@ function App() {
             borderWidth: '4px',
             margin: '0 auto 2rem'
           }}></div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-            SentinelOne Lite
+          <h1 style={{ fontSize: '2rem', fontWeight: '600', marginBottom: '1rem' }}>
+            🛡️ SentinelOne Lite
           </h1>
-          <p style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
+          <p style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '1.1rem' }}>
             Loading security dashboard...
           </p>
         </div>
