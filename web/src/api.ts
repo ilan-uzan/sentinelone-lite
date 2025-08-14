@@ -9,7 +9,8 @@ declare global {
   }
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+// Use relative path since nginx proxies /api/ to the backend
+const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
 const apiClient = axios.create({
   baseURL: API_BASE,

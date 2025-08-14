@@ -35,7 +35,7 @@ fi
 
 # Check database
 echo "🗄️  Database:"
-if docker ps | grep -q "sentinelone-lite-db"; then
+if docker ps | grep -q "infra-db-1"; then
     echo "   ✅ Container running"
 else
     echo "   ❌ Container not found"
