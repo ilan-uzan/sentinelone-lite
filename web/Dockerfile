@@ -9,6 +9,9 @@ RUN npm install
 # Copy source code
 COPY . .
 
+# Set environment variables for build
+ENV VITE_API_BASE=/api
+
 # Build the app
 RUN npm run build
 
