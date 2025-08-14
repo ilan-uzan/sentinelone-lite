@@ -1,131 +1,191 @@
-import React from 'react';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-} from 'chart.js';
-import { Line } from 'react-chartjs-2';
+import React, { useEffect, useRef } from 'react';
+import { Chart, ChartConfiguration } from 'chart.js/auto';
 import { DailyStats } from '../api';
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
 
 interface HourlyChartProps {
   stats: DailyStats;
 }
 
-export const HourlyChart: React.FC<HourlyChartProps> = ({ stats }) => {
-  const chartData = {
-    labels: stats.timeseries.map(item => {
-      const date = new Date(item.t);
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }),
-    datasets: [
-      {
-        label: 'Incidents',
-        data: stats.timeseries.map(item => item.count),
-        borderColor: 'rgb(59, 130, 246)',
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-        borderWidth: 2,
-        fill: true,
-        tension: 0.4,
-        pointBackgroundColor: 'rgb(59, 130, 246)',
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-      },
-    ],
-  };
+const HourlyChart: React.FC<HourlyChartProps> = ({ stats }) => {
+  const chartRef = useRef<HTMLCanvasElement>(null);
+  const chartInstance = useRef<Chart | null>(null);
 
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: false,
+  useEffect(() => {
+    if (!chartRef.current || !stats.timeseries) return;
+
+    // Destroy existing chart
+    if (chartInstance.current) {
+      chartInstance.current.destroy();
+    }
+
+    const ctx = chartRef.current.getContext('2d');
+    if (!ctx) return;
+
+    // Prepare data
+    const labels = stats.timeseries.map(item => {
+      const date = new Date(item.t);
+      return date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        hour12: true
+      });
+    });
+
+    const data = stats.timeseries.map(item => item.count);
+
+    // Chart configuration
+    const config: ChartConfiguration<'line'> = {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Incidents per Hour',
+            data,
+            borderColor: 'rgba(0, 122, 255, 0.8)',
+            backgroundColor: 'rgba(0, 122, 255, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: 'rgba(0, 122, 255, 0.9)',
+            pointBorderColor: 'rgba(255, 255, 255, 0.9)',
+            pointBorderWidth: 2,
+            pointRadius: 6,
+            pointHoverRadius: 8,
+            pointHoverBackgroundColor: 'rgba(0, 122, 255, 1)',
+            pointHoverBorderColor: 'rgba(255, 255, 255, 1)',
+          }
+        ]
       },
-      title: {
-        display: false,
-      },
-      tooltip: {
-        mode: 'index' as const,
-        intersect: false,
-        backgroundColor: 'rgba(30, 41, 59, 0.9)',
-        titleColor: '#f8fafc',
-        bodyColor: '#e2e8f0',
-        borderColor: '#334155',
-        borderWidth: 1,
-        callbacks: {
-          title: function(context: any) {
-            return `Hour: ${context[0].label}`;
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
           },
-          label: function(context: any) {
-            return `Incidents: ${context.parsed.y}`;
+          tooltip: {
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            titleColor: '#1d1d1f',
+            bodyColor: '#86868b',
+            borderColor: 'rgba(255, 255, 255, 0.2)',
+            borderWidth: 1,
+            cornerRadius: 12,
+            displayColors: false,
+            titleFont: {
+              family: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+              size: 14,
+              weight: 600
+            },
+            bodyFont: {
+              family: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+              size: 13,
+              weight: 400
+            },
+            padding: 12,
+            callbacks: {
+              title: (context) => `Hour: ${context[0].label}`,
+              label: (context) => `${context.parsed.y} incident${context.parsed.y !== 1 ? 's' : ''}`
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: {
+              color: 'rgba(255, 255, 255, 0.1)'
+            },
+            ticks: {
+              color: 'rgba(255, 255, 255, 0.7)',
+              font: {
+                family: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+                size: 12,
+                weight: 500
+              },
+              maxRotation: 0,
+              padding: 8
+            }
           },
+          y: {
+            beginAtZero: true,
+            grid: {
+              color: 'rgba(255, 255, 255, 0.1)'
+            },
+            ticks: {
+              color: 'rgba(255, 255, 255, 0.7)',
+              font: {
+                family: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+                size: 12,
+                weight: 500
+              },
+              padding: 8,
+              callback: (value) => Math.floor(Number(value))
+            }
+          }
         },
-      },
-    },
-    scales: {
-      x: {
-        display: true,
-        title: {
-          display: true,
-          text: 'Time (Last 24 Hours)',
-          color: '#cbd5e1',
+        interaction: {
+          intersect: false,
+          mode: 'index'
         },
-        grid: {
-          color: 'rgba(51, 65, 85, 0.3)',
-        },
-        ticks: {
-          color: '#94a3b8',
-          maxTicksLimit: 12,
-        },
-      },
-      y: {
-        display: true,
-        title: {
-          display: true,
-          text: 'Number of Incidents',
-          color: '#cbd5e1',
-        },
-        grid: {
-          color: 'rgba(51, 65, 85, 0.3)',
-        },
-        ticks: {
-          color: '#94a3b8',
-          stepSize: 1,
-          beginAtZero: true,
-        },
-      },
-    },
-    interaction: {
-      mode: 'nearest' as const,
-      axis: 'x' as const,
-      intersect: false,
-    },
-  };
+        elements: {
+          point: {
+            hoverBorderWidth: 3
+          }
+        }
+      }
+    };
+
+    // Create new chart
+    chartInstance.current = new Chart(ctx, config);
+
+    return () => {
+      if (chartInstance.current) {
+        chartInstance.current.destroy();
+      }
+    };
+  }, [stats.timeseries]);
+
+  if (!stats.timeseries || stats.timeseries.length === 0) {
+    return (
+      <div className="chart-container">
+        <h3 className="chart-title">Incidents per Hour (Last 24h)</h3>
+        <div style={{ 
+          textAlign: 'center', 
+          padding: '3rem 1rem', 
+          color: 'var(--text-secondary)',
+          minHeight: '300px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'column'
+        }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📊</div>
+          <p>No data available</p>
+          <p style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>
+            Generate demo traffic to see the chart
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="card">
-      <h3 className="mb-4">Incidents per Hour (Last 24 Hours)</h3>
-      <div style={{ height: '300px' }}>
-        <Line data={chartData} options={options} />
+    <div className="chart-container slide-up">
+      <h3 className="chart-title">Incidents per Hour (Last 24h)</h3>
+      <div style={{ position: 'relative', height: '400px' }}>
+        <canvas ref={chartRef} />
+      </div>
+      <div style={{ 
+        textAlign: 'center', 
+        marginTop: '1rem',
+        fontSize: '0.875rem',
+        color: 'var(--text-secondary)'
+      }}>
+        <span className="status-indicator">
+          <span className="status-dot"></span>
+          Live data • Auto-refreshing every 30 seconds
+        </span>
       </div>
     </div>
   );
 };
+
+export default HourlyChart;

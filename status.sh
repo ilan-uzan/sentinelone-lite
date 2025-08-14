@@ -26,8 +26,8 @@ else
 fi
 
 # Check web dashboard
-echo "📊 Web Dashboard (http://localhost:5173):"
-if curl -s http://localhost:5173 > /dev/null 2>&1; then
+echo "📊 Web Dashboard (http://localhost):"
+if curl -s http://localhost > /dev/null 2>&1; then
     echo "   ✅ Running"
 else
     echo "   ❌ Not responding"

@@ -1,37 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import { KpiCards } from './components/KpiCards';
-import { IncidentsTable } from './components/IncidentsTable';
-import { HourlyChart } from './components/HourlyChart';
-import { DemoButton } from './components/DemoButton';
-import { apiService, Incident, DailyStats } from './api';
+import { useState, useEffect } from 'react';
+import KpiCards from './components/KpiCards';
+import HourlyChart from './components/HourlyChart';
+import IncidentsTable from './components/IncidentsTable';
+import DemoButton from './components/DemoButton';
+import { Incident, DailyStats, getIncidents, getDailyStats } from './api';
 
 function App() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [stats, setStats] = useState<DailyStats>({
-    today_count: 0,
-    by_type: {},
-    timeseries: []
-  });
+  const [stats, setStats] = useState<DailyStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
-      setLoading(true);
       setError(null);
-      
-      // Fetch data in parallel
       const [incidentsData, statsData] = await Promise.all([
-        apiService.getIncidents(50),
-        apiService.getDailyStats()
+        getIncidents(),
+        getDailyStats()
       ]);
-      
       setIncidents(incidentsData);
       setStats(statsData);
-      
     } catch (err) {
-      console.error('Error fetching data:', err);
       setError('Failed to fetch data. Please check if the API is running.');
+      console.error('Error fetching data:', err);
     } finally {
       setLoading(false);
     }
@@ -40,23 +31,39 @@ function App() {
   useEffect(() => {
     fetchData();
     
-    // Set up auto-refresh every 30 seconds
+    // Auto-refresh every 30 seconds
     const interval = setInterval(fetchData, 30000);
-    
     return () => clearInterval(interval);
   }, []);
 
-  const handleEventsGenerated = () => {
-    // Refresh data after demo events are generated
+  const handleTrafficGenerated = () => {
+    // Refresh data after demo traffic is generated
     setTimeout(fetchData, 2000);
   };
 
-  if (loading && incidents.length === 0) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading SentinelOne Lite...</p>
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        color: 'white'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div className="loading-spinner" style={{ 
+            width: '60px', 
+            height: '60px', 
+            borderWidth: '4px',
+            margin: '0 auto 2rem'
+          }}></div>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+            SentinelOne Lite
+          </h1>
+          <p style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
+            Loading security dashboard...
+          </p>
         </div>
       </div>
     );
@@ -64,74 +71,118 @@ function App() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto p-6">
-          <div className="text-red-400 text-6xl mb-4">⚠️</div>
-          <h1 className="text-2xl font-bold mb-4">Connection Error</h1>
-          <p className="text-gray-400 mb-6">{error}</p>
-          <button onClick={fetchData} className="btn btn-primary">
-            Retry Connection
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        padding: '2rem'
+      }}>
+        <div className="glass-card" style={{ textAlign: 'center', maxWidth: '500px' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚠️</div>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: '600', marginBottom: '1rem' }}>
+            Connection Error
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+            {error}
+          </p>
+          <button 
+            className="btn btn-primary"
+            onClick={fetchData}
+          >
+            🔄 Retry Connection
           </button>
+          <div style={{ 
+            marginTop: '1.5rem', 
+            fontSize: '0.875rem', 
+            color: 'var(--text-secondary)',
+            padding: '1rem',
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            borderRadius: 'var(--radius-lg)'
+          }}>
+            <p style={{ marginBottom: '0.5rem' }}><strong>Quick Fix:</strong></p>
+            <p>1. Ensure Docker is running</p>
+            <p>2. Run <code style={{ backgroundColor: 'rgba(0,0,0,0.2)', padding: '0.2rem 0.4rem', borderRadius: '0.25rem' }}>./start.sh</code></p>
+            <p>3. Wait for services to start</p>
+          </div>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-900 text-white p-4 md:p-6 lg:p-8">
-      {/* Header */}
-      <div className="max-w-7xl mx-auto mb-8">
-        <div className="text-center mb-8">
-          <h1 className="mb-2">🛡️ SentinelOne Lite</h1>
-          <p className="text-gray-400 text-lg">
-            Lightweight Cybersecurity Monitoring Dashboard
-          </p>
-        </div>
-        
-        {/* Demo Button */}
-        <div className="max-w-2xl mx-auto mb-8">
-          <DemoButton onEventsGenerated={handleEventsGenerated} />
-        </div>
-      </div>
+  // Calculate KPI data
+  const todayCount = stats?.today_count || 0;
+  const topAttackingIp = incidents.length > 0 ? incidents[0].ip : 'None';
+  const bruteForceCount = stats?.by_type?.BRUTE_FORCE || 0;
+  const portScanCount = stats?.by_type?.PORT_SCAN || 0;
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* KPI Cards */}
-        <KpiCards stats={stats} />
-        
-        {/* Chart and Table Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Hourly Chart */}
-          <div className="lg:col-span-2">
-            <HourlyChart stats={stats} />
-          </div>
-          
-          {/* Incidents Table */}
-          <div className="lg:col-span-2">
-            <IncidentsTable incidents={incidents} />
-          </div>
-        </div>
-      </div>
+  return (
+    <div style={{ 
+      minHeight: '100vh',
+      padding: '2rem',
+      maxWidth: '1400px',
+      margin: '0 auto'
+    }}>
+      {/* Header */}
+      <header style={{ 
+        textAlign: 'center', 
+        marginBottom: '3rem',
+        padding: '2rem 0'
+      }}>
+        <h1 style={{
+          fontSize: 'var(--font-size-4xl)',
+          fontWeight: '700',
+          color: 'white',
+          marginBottom: '1rem',
+          textShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
+        }}>
+          🛡️ SentinelOne Lite
+        </h1>
+        <p style={{
+          fontSize: 'var(--font-size-lg)',
+          color: 'rgba(255, 255, 255, 0.9)',
+          fontWeight: '400',
+          maxWidth: '600px',
+          margin: '0 auto'
+        }}>
+          Real-time cybersecurity monitoring dashboard with intelligent threat detection
+        </p>
+      </header>
+
+      {/* KPI Cards */}
+      <KpiCards
+        todayCount={todayCount}
+        topAttackingIp={topAttackingIp}
+        bruteForceCount={bruteForceCount}
+        portScanCount={portScanCount}
+      />
+
+      {/* Chart */}
+      {stats && <HourlyChart stats={stats} />}
+
+      {/* Incidents Table */}
+      <IncidentsTable incidents={incidents} />
+
+      {/* Demo Button */}
+      <DemoButton onTrafficGenerated={handleTrafficGenerated} />
 
       {/* Footer */}
-      <div className="max-w-7xl mx-auto mt-12 pt-8 border-t border-gray-700">
-        <div className="text-center text-gray-400 text-sm">
-          <p>
-            SentinelOne Lite - Educational OSS Project | 
-            <a 
-              href="https://github.com/your-username/sentinelone-lite" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-blue-400 hover:text-blue-300 ml-1"
-            >
-              GitHub
-            </a>
-          </p>
-          <p className="mt-1">
-            ⚠️ This is a demo application. Do not deploy to production networks.
-          </p>
-        </div>
-      </div>
+      <footer style={{
+        textAlign: 'center',
+        marginTop: '4rem',
+        padding: '2rem 0',
+        borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+        color: 'rgba(255, 255, 255, 0.7)',
+        fontSize: '0.875rem'
+      }}>
+        <p>
+          <strong>SentinelOne Lite</strong> • Open Source Security Monitoring
+        </p>
+        <p style={{ marginTop: '0.5rem', fontSize: '0.75rem' }}>
+          Educational project • Not affiliated with SentinelOne Inc.
+        </p>
+      </footer>
     </div>
   );
 }

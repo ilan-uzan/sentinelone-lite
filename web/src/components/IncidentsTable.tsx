@@ -5,34 +5,70 @@ interface IncidentsTableProps {
   incidents: Incident[];
 }
 
-export const IncidentsTable: React.FC<IncidentsTableProps> = ({ incidents }) => {
+const IncidentsTable: React.FC<IncidentsTableProps> = ({ incidents }) => {
   const formatTimestamp = (timestamp: string) => {
-    return new Date(timestamp).toLocaleString();
+    const date = new Date(timestamp);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
   };
 
-  const getSeverityBadge = (severity: string) => {
-    const severityClass = `badge-${severity.toLowerCase()}`;
-    return <span className={`badge ${severityClass}`}>{severity}</span>;
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'HIGH':
+        return 'badge-high';
+      case 'MEDIUM':
+        return 'badge-medium';
+      case 'LOW':
+        return 'badge-low';
+      default:
+        return 'badge-medium';
+    }
   };
 
   const getTypeBadge = (type: string) => {
-    const typeClass = `badge-${type.toLowerCase().replace('_', '-')}`;
-    return <span className={`badge ${typeClass}`}>{type.replace('_', ' ')}</span>;
+    switch (type) {
+      case 'BRUTE_FORCE':
+        return 'badge-brute-force';
+      case 'PORT_SCAN':
+        return 'badge-port-scan';
+      default:
+        return 'badge-medium';
+    }
   };
 
   if (incidents.length === 0) {
     return (
-      <div className="card">
-        <h3>Latest Incidents</h3>
-        <p className="text-gray-400 text-center py-8">No incidents detected yet.</p>
+      <div className="glass-card">
+        <div className="glass-card-header">
+          <h2 className="glass-card-title">Latest Incidents</h2>
+          <p className="glass-card-subtitle">No security incidents detected</p>
+        </div>
+        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🛡️</div>
+          <p>Your network is currently secure</p>
+          <p style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>
+            Use the demo button below to generate test traffic
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="card">
-      <h3 className="mb-4">Latest Incidents</h3>
-      <div className="overflow-x-auto">
+    <div className="glass-card slide-up">
+      <div className="glass-card-header">
+        <h2 className="glass-card-title">Latest Incidents</h2>
+        <p className="glass-card-subtitle">
+          {incidents.length} security incident{incidents.length !== 1 ? 's' : ''} detected
+        </p>
+      </div>
+      
+      <div className="table-container">
         <table className="table">
           <thead>
             <tr>
@@ -46,38 +82,45 @@ export const IncidentsTable: React.FC<IncidentsTableProps> = ({ incidents }) => 
           </thead>
           <tbody>
             {incidents.map((incident) => (
-              <tr key={incident.id}>
-                <td className="text-sm">
-                  {formatTimestamp(incident.created_at)}
-                </td>
-                <td className="font-mono text-sm">
-                  {incident.ip}
+              <tr key={incident.id} className="fade-in">
+                <td>
+                  <div style={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>
+                    {formatTimestamp(incident.created_at)}
+                  </div>
                 </td>
                 <td>
-                  {getTypeBadge(incident.type)}
+                  <div style={{ fontFamily: 'monospace', fontWeight: '500' }}>
+                    {incident.ip}
+                  </div>
                 </td>
                 <td>
-                  {getSeverityBadge(incident.severity)}
+                  <span className={`badge ${getTypeBadge(incident.type)}`}>
+                    {incident.type.replace('_', ' ')}
+                  </span>
                 </td>
-                <td className="text-center font-semibold">
-                  {incident.count}
+                <td>
+                  <span className={`badge ${getSeverityColor(incident.severity)}`}>
+                    {incident.severity}
+                  </span>
                 </td>
-                <td className="text-sm">
-                  {incident.meta?.ports && (
-                    <div>
-                      <span className="text-gray-400">Ports: </span>
-                      <span className="font-mono">
-                        {incident.meta.ports.slice(0, 3).join(', ')}
-                        {incident.meta.ports.length > 3 && ` (+${incident.meta.ports.length - 3})`}
+                <td>
+                  <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
+                    {incident.count}
+                  </div>
+                </td>
+                <td>
+                  <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                    {incident.meta?.ports ? (
+                      <span>
+                        Ports: {Array.isArray(incident.meta.ports) 
+                          ? incident.meta.ports.slice(0, 3).join(', ')
+                          : incident.meta.ports}
+                        {Array.isArray(incident.meta.ports) && incident.meta.ports.length > 3 && '...'}
                       </span>
-                    </div>
-                  )}
-                  {incident.meta?.window_minutes && (
-                    <div>
-                      <span className="text-gray-400">Window: </span>
-                      <span>{incident.meta.window_minutes}m</span>
-                    </div>
-                  )}
+                    ) : (
+                      incident.meta?.notes || 'No additional details'
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -87,3 +130,5 @@ export const IncidentsTable: React.FC<IncidentsTableProps> = ({ incidents }) => 
     </div>
   );
 };
+
+export default IncidentsTable;

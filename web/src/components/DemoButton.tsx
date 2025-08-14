@@ -1,70 +1,96 @@
 import React, { useState } from 'react';
-import { apiService } from '../api';
+import { generateDemoTraffic } from '../api';
 
 interface DemoButtonProps {
-  onEventsGenerated: () => void;
+  onTrafficGenerated: () => void;
 }
 
-export const DemoButton: React.FC<DemoButtonProps> = ({ onEventsGenerated }) => {
+const DemoButton: React.FC<DemoButtonProps> = ({ onTrafficGenerated }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  const handleGenerateDemoTraffic = async () => {
+  const handleClick = async () => {
     setIsLoading(true);
     setMessage('');
-    
+
     try {
-      const result = await apiService.generateTestEvents();
+      await generateDemoTraffic();
+      setMessage('✅ Demo traffic generated successfully! Check the incidents table above.');
+      onTrafficGenerated();
       
-      setMessage(`✅ Generated ${result.events_created} test events. Check for new incidents in a few seconds!`);
-      
-      // Trigger refresh after a short delay to allow detection engine to process
-      setTimeout(() => {
-        onEventsGenerated();
-      }, 3000);
-      
+      // Clear message after 5 seconds
+      setTimeout(() => setMessage(''), 5000);
     } catch (error) {
-      console.error('Error generating demo events:', error);
-      setMessage('❌ Failed to generate demo events. Please try again.');
+      setMessage('❌ Failed to generate demo traffic. Please try again.');
+      console.error('Demo traffic generation failed:', error);
+      
+      // Clear error message after 5 seconds
+      setTimeout(() => setMessage(''), 5000);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="card">
-      <h3 className="mb-4">Demo Traffic Generator</h3>
-      <p className="text-sm text-gray-400 mb-4">
-        Generate synthetic security events to test the detection engine. This will create:
-      </p>
-      <ul className="text-sm text-gray-400 mb-4 list-disc list-inside space-y-1">
-        <li>Brute force attack simulation (12 failed login attempts)</li>
-        <li>Port scan simulation (20 connection attempts to different ports)</li>
-      </ul>
-      
+    <div className="demo-button-container">
       <button
-        onClick={handleGenerateDemoTraffic}
+        className="demo-btn"
+        onClick={handleClick}
         disabled={isLoading}
-        className="btn btn-primary"
       >
-        {isLoading ? 'Generating...' : '🚀 Generate Demo Traffic'}
+        {isLoading ? (
+          <>
+            <span className="loading-spinner"></span>
+            Generating Demo Traffic...
+          </>
+        ) : (
+          <>
+            🚀 Generate Demo Traffic
+          </>
+        )}
       </button>
       
       {message && (
-        <div className={`mt-4 p-3 rounded-lg text-sm ${
-          message.includes('✅') ? 'bg-green-900/20 text-green-400' : 'bg-red-900/20 text-red-400'
-        }`}>
+        <div 
+          className="fade-in"
+          style={{
+            marginTop: '1rem',
+            padding: '0.75rem 1rem',
+            borderRadius: 'var(--radius-lg)',
+            fontSize: '0.875rem',
+            fontWeight: '500',
+            backgroundColor: message.includes('✅') 
+              ? 'rgba(52, 199, 89, 0.1)' 
+              : 'rgba(255, 59, 48, 0.1)',
+            color: message.includes('✅') 
+              ? 'var(--success)' 
+              : 'var(--danger)',
+            border: `1px solid ${message.includes('✅') 
+              ? 'rgba(52, 199, 89, 0.2)' 
+              : 'rgba(255, 59, 48, 0.2)'}`,
+            backdropFilter: 'blur(10px)',
+            textAlign: 'center'
+          }}
+        >
           {message}
         </div>
       )}
       
-      <div className="mt-4 text-xs text-gray-500">
-        <p>Expected results:</p>
-        <ul className="list-disc list-inside space-y-1 mt-1">
-          <li>MEDIUM severity BRUTE_FORCE incident from 203.0.113.7</li>
-          <li>HIGH severity PORT_SCAN incident from 198.51.100.9</li>
-        </ul>
+      <div style={{
+        marginTop: '1rem',
+        fontSize: '0.875rem',
+        color: 'var(--text-secondary)',
+        textAlign: 'center',
+        maxWidth: '500px',
+        margin: '1rem auto 0'
+      }}>
+        <p>
+          This will generate synthetic security events that trigger both brute force 
+          and port scan detection rules, demonstrating the system's capabilities.
+        </p>
       </div>
     </div>
   );
 };
+
+export default DemoButton;
